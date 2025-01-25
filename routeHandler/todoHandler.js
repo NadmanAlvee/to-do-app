@@ -1,26 +1,28 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
-const todoSchema = require('../schemas/todoSchema'); // importing schema
-const Todo = new mongoose.model("Todo", todoSchema); // creating Todo Model to interect with Mondo database
+const todoSchema = require('../schemas/todoSchema');
+const Todo = new mongoose.model("Todo", todoSchema); 
+const userSchema = require('../schemas/userSchema');
+const User = new mongoose.model("User", userSchema);
 const { authGuard }  = require('../middlewares/authGuard');
 
 // Get all the todos
 router.get('/', authGuard, async (req, res)=> {
-    console.log(req.username);
-    console.log(req.userId);
-    
     try {
-        const data = await Todo.find().select({
+        const data = await Todo.find()
+        .populate("user", "name username -_id")
+        .select({
             _id: 0,
             __v: 0
-        }).limit(null);
+        })
+        .limit(null);
 
         if(data.length === 0){
             res.status(200).json({ message: "not data was found!"});
         } else{
             console.log(data);
-            res.status(200).json({ message: "data found successfully!"});
+            res.status(200).json({ message: "data found successfully!", data });
         }
 
     } catch (err) {
@@ -68,11 +70,7 @@ router.get('/findJs', authGuard, async (req, res)=> {
 // Get todo by query
 router.get('/search', authGuard, async (req, res) => {
     try {
-        console.log("Entered /language route");
-
-        console.log(req.query.search);
         const language = req.query.search || '';
-        console.log("Language filter:", language);
 
         const data = await Todo.find().byLanguage(language);
         console.log("Retrieved data:", data);
@@ -107,10 +105,22 @@ router.get('/:id', authGuard, async (req, res)=> {
 });
 
 // Post a todo
-router.post('/', async (req, res)=> {
+router.post('/', authGuard, async (req, res)=> {
     try {
-        const newTodo = new Todo(req.body); // creating an instance newTodo
-        await newTodo.save();
+        const newTodo = new Todo({
+            ...req.body,            // object destructuring
+            user: req.userId
+        });                         // creating an instance newTodo
+        const todo = await newTodo.save();
+
+        await User.updateOne({
+            _id: req.userId
+        }, {
+            $push: {
+                todos: todo._id
+            }
+        });
+
         res.status(200).json({ message: "Todo was inserted successfully!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -118,9 +128,12 @@ router.post('/', async (req, res)=> {
 });
 
 // Post multiple todos
-router.post('/all', async (req, res)=> {
+router.post('/all', authGuard, async (req, res)=> {
     try {
-        await Todo.insertMany(req.body);
+        await Todo.insertMany({
+            ...req.body,
+            user: req.userId
+        });
         res.status(200).json({ message: "Todos were inserted successfully!" });
     } catch (err) {
         res.status(500).json({ error: err.message });
