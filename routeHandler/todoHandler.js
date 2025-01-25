@@ -3,9 +3,13 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const todoSchema = require('../schemas/todoSchema'); // importing schema
 const Todo = new mongoose.model("Todo", todoSchema); // creating Todo Model to interect with Mondo database
+const { authGuard }  = require('../middlewares/authGuard');
 
 // Get all the todos
-router.get('/', async (req, res)=> {
+router.get('/', authGuard, async (req, res)=> {
+    console.log(req.username);
+    console.log(req.userId);
+    
     try {
         const data = await Todo.find().select({
             _id: 0,
@@ -25,7 +29,7 @@ router.get('/', async (req, res)=> {
 });
 
 // Get active the todos
-router.get('/active', async (req, res)=> {
+router.get('/active', authGuard, async (req, res)=> {
     try {
         const todo = new Todo();
         const data = await todo.findActive().select({
@@ -46,7 +50,7 @@ router.get('/active', async (req, res)=> {
 });
 
 // Get todo includes js
-router.get('/findJs', async (req, res)=> {
+router.get('/findJs', authGuard, async (req, res)=> {
     try {
         const data = await Todo.findByJs();
 
@@ -62,7 +66,7 @@ router.get('/findJs', async (req, res)=> {
 });
 
 // Get todo by query
-router.get('/search', async (req, res) => {
+router.get('/search', authGuard, async (req, res) => {
     try {
         console.log("Entered /language route");
 
@@ -85,7 +89,7 @@ router.get('/search', async (req, res) => {
 });
 
 // Get a the todo through id
-router.get('/:id', async (req, res)=> {
+router.get('/:id', authGuard, async (req, res)=> {
     try {
         const data = await Todo.find({ _id: req.params.id }).select({
             _id: 0,
@@ -124,7 +128,7 @@ router.post('/all', async (req, res)=> {
 });
 
 // update todos
-router.put('/:id', async (req, res)=> {
+router.put('/:id', authGuard, async (req, res)=> {
     try{
         // await Todo.updateOne({_id: req.params.id}, {
         //     $set: {
@@ -144,7 +148,7 @@ router.put('/:id', async (req, res)=> {
 });
 
 // Delete todo
-router.delete('/:id', async (req, res)=> {
+router.delete('/:id', authGuard, async (req, res)=> {
     try {
         await Todo.deleteOne({_id: req.params.id});
         res.status(200).json({ message: "data deleted successfully!"});
